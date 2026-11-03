@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Christia Mae's Pony Photobooth</title>
+<style>
+:root{--pink:#ffb6d5;--purple:#bda7ff;--ink:#654b83;--cream:#fffaff}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Trebuchet MS",Arial,sans-serif;color:var(--ink);background:linear-gradient(135deg,#ffe5f1,#eee5ff 48%,#dff8ff);min-height:100vh}
+header{text-align:center;padding:28px 16px 18px;background:linear-gradient(90deg,#ffc9dfaa,#d9caffaa,#c9f5ffaa)}
+h1{margin:4px 0;font-size:clamp(1.7rem,4vw,2.7rem);text-shadow:2px 2px white}
+.subtitle{margin:8px 0 0;font-weight:700}
+main{max-width:1120px;margin:22px auto;padding:0 16px;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,.8fr);gap:20px}
+.panel{background:#ffffffd9;border:3px solid white;border-radius:24px;padding:18px;box-shadow:0 10px 30px #9a79b733}
+.stage{position:relative;overflow:hidden;border-radius:20px;background:#34284a;aspect-ratio:4/3;display:grid;place-items:center}
+video,canvas#photo{width:100%;height:100%;object-fit:cover}
+#photo{display:none}
+.frame{position:absolute;inset:0;pointer-events:none;border:12px solid #ffcae2;border-radius:20px;box-shadow:inset 0 0 0 5px #fff}
+.frame:before{content:"✦  ♡  ✧  ♡  ✦";position:absolute;top:10px;left:0;right:0;text-align:center;color:#fff;font-size:clamp(18px,3vw,30px);text-shadow:0 2px 4px #a45a9b}
+.frame:after{content:"CHRISTIA MAE • 7TH BIRTHDAY";position:absolute;bottom:10px;left:0;right:0;text-align:center;color:#fff;font-weight:900;letter-spacing:1px;font-size:clamp(11px,1.8vw,18px);text-shadow:0 2px 4px #8c559c}
+.pony{position:absolute;left:14px;bottom:13px;font-size:clamp(28px,5vw,54px);filter:drop-shadow(0 2px 2px #9b6599)}
+#countdown{position:absolute;color:white;font-size:clamp(60px,12vw,120px);font-weight:900;text-shadow:0 4px 14px #6b3c89;display:none}
+.controls{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;align-items:center}
+button,select{border:0;border-radius:999px;padding:11px 16px;font-weight:800;color:#684b82;background:#f7d5e8;cursor:pointer}
+button.primary{background:linear-gradient(90deg,#ffacd0,#c5b2ff);color:#fff}
+button:disabled{opacity:.45;cursor:not-allowed}
+select{background:#f0eaff}
+.note{font-size:.9rem;line-height:1.5;color:#765f8e}
+h2{margin:2px 0 12px;font-size:1.25rem}
+.gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.thumb{position:relative}
+.thumb img{width:100%;display:block;border-radius:12px;border:3px solid white}
+.thumb button{width:100%;margin-top:5px;padding:7px;font-size:.8rem}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.filters button{padding:8px 12px;font-size:.85rem}
+.filters button.active{outline:3px solid #c6aaff;background:#fff}
+footer{text-align:center;padding:8px 16px 24px;color:#765f8e;font-size:.9rem}
+@media(max-width:760px){main{grid-template-columns:1fr}.panel{padding:13px}}
+</style>
+</head>
+<body>
+<header>
+  <div style="font-size:2rem">🦄 🌈 🦋</div>
+  <h1>Christia Mae's Pony Photobooth</h1>
+  <p class="subtitle">A magical 7th Birthday Celebration • November 7, 2026 • 4:00 PM</p>
+  <div>♡ Pastel dreams, pony smiles & happy memories ♡</div>
+</header>
+<main>
+<section class="panel">
+  <h2>📸 Strike a pose!</h2>
+  <div class="stage">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="photo"></canvas>
+    <div class="frame"><span class="pony">🦄</span></div>
+    <div id="countdown"></div>
+  </div>
+  <div class="controls">
+    <button id="start" class="primary">Enable Camera</button>
+    <label for="timer">Timer</label>
+    <select id="timer"><option value="3">3 seconds</option><option value="5">5 seconds</option><option value="10">10 seconds</option></select>
+    <button id="capture" class="primary" disabled>📷 Take Photo</button>
+    <button id="retake" disabled>↻ Retake</button>
+    <button id="download" disabled>⬇ Download PNG</button>
+  </div>
+  <div class="filters" aria-label="Photo filters">
+    <button class="active" data-filter="none">Original</button>
+    <button data-filter="soft">Soft Pink</button>
+    <button data-filter="lavender">Lavender</button>
+    <button data-filter="warm">Warm Glow</button>
+    <button data-filter="bw">Classic B&W</button>
+  </div>
+  <p class="note" id="status">Select “Enable Camera” and allow camera access when your browser asks.</p>
+</section>
+<aside class="panel">
+  <h2>🌸 Your photo gallery</h2>
+  <p class="note">Your snapshots stay in this browser session. Download each photo to keep it.</p>
+  <div id="gallery" class="gallery"></div>
+</aside>
+</main>
+<footer>Made with love for Christia Mae's 7th Birthday ✨</footer>
+<script>
+const video=document.getElementById('video'), canvas=document.getElementById('photo'), ctx=canvas.getContext('2d');
+const start=document.getElementById('start'), capture=document.getElementById('capture'), retake=document.getElementById('retake'), download=document.getElementById('download');
+const countdown=document.getElementById('countdown'), statusEl=document.getElementById('status'), timer=document.getElementById('timer');
+let stream=null, currentFilter='none', latest=null, shots=0;
+const filters={
+ none:'none',
+ soft:'saturate(1.12) sepia(.12) hue-rotate(315deg) brightness(1.06)',
+ lavender:'saturate(1.18) hue-rotate(18deg) brightness(1.04)',
+ warm:'sepia(.22) saturate(1.25) brightness(1.06)',
+ bw:'grayscale(1) contrast(1.08)'
+};
+document.querySelectorAll('.filters button').forEach(b=>b.addEventListener('click',()=>{
+ document.querySelectorAll('.filters button').forEach(x=>x.classList.remove('active'));
+ b.classList.add('active'); currentFilter=b.dataset.filter;
+ if(latest) drawPhoto();
+}));
+start.addEventListener('click',async()=>{
+ try{
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+  video.srcObject=stream; await video.play();
+  start.disabled=true;capture.disabled=false;statusEl.textContent='Camera ready! Choose a filter and take your photo.';
+ }catch(e){statusEl.textContent='Camera could not start. Please allow camera access and open this page on HTTPS or localhost.';}
+});
+capture.addEventListener('click',async()=>{
+ if(!stream)return;
+ capture.disabled=true;
+ let n=Number(timer.value);
+ for(;n>0;n--){countdown.textContent=n;countdown.style.display='block';await new Promise(r=>setTimeout(r,1000));}
+ countdown.textContent='✨';await new Promise(r=>setTimeout(r,250));countdown.style.display='none';
+ latest=true;drawPhoto();canvas.style.display='block';video.style.display='none';
+ retake.disabled=false;download.disabled=false;statusEl.textContent='Lovely! Your photo is ready. Retake it or download your PNG.';
+});
+function drawPhoto(){
+ if(!video.videoWidth)return;
+ canvas.width=video.videoWidth;canvas.height=video.videoHeight;
+ ctx.save();
+ if(currentFilter==='bw')ctx.filter=filters.bw;
+ else ctx.filter=filters[currentFilter]||'none';
+ ctx.translate(canvas.width,0);ctx.scale(-1,1);
+ ctx.drawImage(video,0,0,canvas.width,canvas.height);
+ ctx.restore();
+ // pastel photo frame and decorative details
+ const w=canvas.width,h=canvas.height, border=Math.max(12,w*.018);
+ ctx.filter='none';ctx.lineWidth=border;ctx.strokeStyle='#ffc5df';ctx.strokeRect(border/2,border/2,w-border,h-border);
+ ctx.lineWidth=Math.max(4,border*.45);ctx.strokeStyle='#ffffff';ctx.strokeRect(border,border,w-2*border,h-2*border);
+ ctx.textAlign='center';ctx.fillStyle='white';ctx.shadowColor='#89558e';ctx.shadowBlur=8;
+ ctx.font=`bold ${Math.max(22,w*.035)}px Trebuchet MS`;ctx.fillText('✦  ♡  ✧  ♡  ✦',w/2,border*2.8);
+ ctx.font=`bold ${Math.max(15,w*.023)}px Trebuchet MS`;ctx.fillText('CHRISTIA MAE • 7TH BIRTHDAY',w/2,h-border*1.5);
+ ctx.font=`${Math.max(35,w*.06)}px sans-serif`;ctx.textAlign='left';ctx.fillText('🦄',border*1.5,h-border*2);
+ ctx.shadowBlur=0;
+}
+retake.addEventListener('click',()=>{
+ latest=null;canvas.style.display='none';video.style.display='block';
+ retake.disabled=true;download.disabled=true;capture.disabled=false;statusEl.textContent='Ready for another magical pose!';
+});
+download.addEventListener('click',()=>{
+ if(!latest)return;
+ const a=document.createElement('a');a.download=`Christia-Mae-Pony-Photobooth-${Date.now()}.png`;a.href=canvas.toDataURL('image/png');a.click();
+});
+function addToGallery(){
+ const data=canvas.toDataURL('image/png'),wrap=document.createElement('div');wrap.className='thumb';
+ const img=document.createElement('img');img.src=data;img.alt='Birthday photobooth snapshot';
+ const btn=document.createElement('button');btn.textContent='⬇ Save PNG';btn.addEventListener('click',()=>{const a=document.createElement('a');a.href=data;a.download=`Christia-Mae-photo-${shots}.png`;a.click();});
+ wrap.append(img,btn);document.getElementById('gallery').prepend(wrap);
+}
+const originalDraw=drawPhoto;
+capture.addEventListener('click',()=>{setTimeout(()=>{if(latest){shots++;addToGallery();}},Number(timer.value)*1000+400);});
+window.addEventListener('beforeunload',()=>{if(stream)stream.getTracks().forEach(t=>t.stop());});
+</script>
+</body>
+</html>
